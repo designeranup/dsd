@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Samples Dashboard</title>
+  <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --primary-color: #1976d2;
+      --primary-light: #42a5f5;
+      --primary-dark: #1565c0;
+      --bg-color: #f5f5f5;
+      --card-bg: #ffffff;
+      --text-color: #333333;
+      --text-secondary: #666666;
+      --border-color: #dddddd;
+      --table-header-bg: #fafafa;
+      --table-row-hover: #f5f5f5;
+      --success-color: #4caf50;
+      --error-color: #f44336;
+      --warning-color: #ff9800;
+      --input-bg: #ffffff;
+      --accent-1: #42a5f5;
+      --accent-2: #66bb6a;
+      --accent-3: #ffa726;
+      --accent-4: #ab47bc;
+      --accent-5: #ef5350;
+      --accent-6: #26c6da;
+      --accent-7: #ec407a;
+      --accent-8: #ffca28;
+      --accent-9: #7e57c2;
+      --accent-10: #26a69a;
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.08);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.12);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --primary-color: #42a5f5;
+        --primary-light: #90caf9;
+        --primary-dark: #1976d2;
+        --bg-color: #1e1e1e;
+        --card-bg: #2d2d2d;
+        --text-color: #ffffff;
+        --text-secondary: #999999;
+        --border-color: #404040;
+        --table-header-bg: #252525;
+        --table-row-hover: #353535;
+        --input-bg: #333333;
+        --warning-color: #ffb74d;
+        --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+        --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.5;
+      color: var(--text-color);
+      background: var(--bg-color);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 16px 24px;
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .header-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--primary-color);
+      margin: 0;
+    }
+
+    .header-subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin: 4px 0 0 0;
+    }
+
+    .header-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success-color);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--card-bg);
+      padding: 6px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .tab {
+      flex: 1;
+      padding: 10px 20px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+
+    .tab:hover { color: var(--text-color); }
+    .tab.active { background: var(--primary-color); color: white; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .subtabs {
+      display: inline-flex;
+      background: var(--table-header-bg);
+      border-radius: 999px;
+      padding: 4px;
+      margin-bottom: 20px;
+      position: relative;
+      box-shadow: inset 0 0 0 1px var(--border-color);
+      vertical-align: middle;
+    }
+
+    .subtab {
+      position: relative;
+      z-index: 2;
+      padding: 9px 32px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 999px;
+      transition: color 0.25s ease;
+      font-family: inherit;
+      min-width: 110px;
+      letter-spacing: 0.3px;
+    }
+
+    .subtab:hover:not(.active) { color: var(--text-color); }
+    .subtab.active { color: white; }
+
+    .subtab-slider {
+      position: absolute;
+      background: var(--primary-color);
+      border-radius: 999px;
+      transition: left 0.3s cubic-bezier(.4,0,.2,1),
+                  width 0.3s cubic-bezier(.4,0,.2,1),
+                  top 0.3s cubic-bezier(.4,0,.2,1),
+                  height 0.3s cubic-bezier(.4,0,.2,1);
+      z-index: 1;
+      pointer-events: none;
+      box-shadow: 0 2px 10px rgba(66, 165, 245, 0.4);
+      left: 0;
+      top: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .subtab-content { display: none; }
+    .subtab-content.active { display: block; }
+
+    .matrix-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .matrix-control-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .matrix-select {
+      background: var(--input-bg);
+      color: var(--text-color);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 7px 32px 7px 12px;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      min-width: 160px;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M1 1.5l5 5 5-5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      transition: border-color 0.15s ease;
+    }
+
+    .matrix-select:hover { border-color: var(--primary-color); }
+    .matrix-select:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(66,165,245,0.15); }
+
+    .quality-row.clickable {
+      cursor: pointer;
+      transition: background 0.15s ease;
+      position: relative;
+    }
+
+    .quality-row.clickable:hover { background: var(--table-row-hover); }
+
+    .quality-row.clickable::after {
+      content: '\203A';
+      color: var(--text-secondary);
+      font-size: 18px;
+      margin-left: 10px;
+      opacity: 0.4;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+      display: inline-block;
+    }
+
+    .quality-row.clickable:hover::after {
+      opacity: 0.9;
+      transform: translateX(2px);
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-overlay.visible { display: flex; }
+
+    .modal {
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: var(--shadow-md);
+      width: 100%;
+      max-width: 1500px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border-color);
+      gap: 16px;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0;
+      color: var(--text-color);
+    }
+
+    .modal-subtitle {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin: 4px 0 0 0;
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 26px;
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .modal-close:hover {
+      background: var(--table-row-hover);
+      color: var(--text-color);
+    }
+
+    .modal-body {
+      flex: 1;
+      overflow: auto;
+      padding: 0;
+      position: relative;
+    }
+
+    .modal-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .modal-table th {
+      position: sticky;
+      top: 0;
+      background: var(--table-header-bg);
+      text-align: left;
+      padding: 10px 12px;
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-color);
+      z-index: 1;
+    }
+
+    .modal-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-color);
+      max-width: 280px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .modal-table tr:hover td {
+      background: var(--table-row-hover);
+    }
+
+    .modal-table td.num {
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
+    .modal-table td.date,
+    .modal-table td.datetime {
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .modal-table td.ref {
+      color: var(--primary-light);
+    }
+
+    .modal-table td.bool {
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-secondary);
+    }
+
+    .modal-table td.error {
+      color: var(--accent-5);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .modal-table td.attachment {
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+
+    .modal-table td.attachment.has-files {
+      cursor: pointer;
+      color: var(--primary-light);
+      font-style: normal;
+      text-decoration: underline;
+      text-decoration-style: dashed;
+      text-underline-offset: 3px;
+    }
+
+    .modal-table td.attachment.has-files:hover {
+      color: var(--primary-color);
+    }
+
+    #galleryModal { z-index: 1100; }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+      padding: 20px;
+    }
+
+    .gallery-item {
+      background: var(--table-header-bg);
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      aspect-ratio: 1;
+      position: relative;
+      border: 1px solid var(--border-color);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .gallery-item:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .gallery-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .gallery-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      text-align: center;
+      padding: 16px;
+    }
+
+    .gallery-placeholder .ext {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-color);
+      letter-spacing: 0.5px;
+    }
+
+    .gallery-caption {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 6px 10px;
+      font-size: 11px;
+      color: white;
+      background: linear-gradient(to top, rgba(0,0,0,0.75), rgba(0,0,0,0));
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      pointer-events: none;
+    }
+
+    .gallery-item.not-clickable { cursor: default; }
+    .gallery-item.not-clickable:hover {
+      transform: none;
+      box-shadow: none;
+    }
+
+    .gallery-notice {
+      grid-column: 1 / -1;
+      background: rgba(239, 83, 80, 0.08);
+      border: 1px solid rgba(239, 83, 80, 0.3);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 12px;
+      color: var(--text-color);
+      line-height: 1.5;
+    }
+
+    .gallery-notice strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--accent-5);
+      font-size: 13px;
+    }
+
+    .gallery-notice code {
+      background: var(--table-header-bg);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .gallery-open-btn {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 5px 12px;
+      background: var(--primary-color);
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      transition: background 0.15s ease;
+    }
+
+    .gallery-open-btn:hover {
+      background: var(--primary-dark);
+    }
+
+    .gallery-spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid var(--border-color);
+      border-top-color: var(--primary-color);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .lightbox-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.92);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1200;
+      padding: 32px;
+    }
+
+    .lightbox-overlay.visible { display: flex; }
+
+    .lightbox-image {
+      max-width: 95vw;
+      max-height: 88vh;
+      object-fit: contain;
+      border-radius: 6px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: 18px;
+      right: 24px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: white;
+      font-size: 26px;
+      cursor: pointer;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      transition: background 0.15s ease;
+    }
+
+    .lightbox-close:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    .lightbox-caption {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      padding: 8px 16px;
+      background: rgba(0,0,0,0.55);
+      border-radius: 8px;
+      font-size: 13px;
+      max-width: 80vw;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .modal-table td.choice {
+      color: var(--text-color);
+    }
+
+    .placeholder-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 80px 24px;
+      box-shadow: var(--shadow-sm);
+      text-align: center;
+      color: var(--text-secondary);
+    }
+
+    .placeholder-card h2 {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text-color);
+      margin: 0 0 12px 0;
+    }
+
+    .placeholder-card p {
+      font-size: 14px;
+      margin: 0;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .kpi-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+      border-left: 4px solid var(--primary-color);
+    }
+
+    .kpi-card.accent-green { border-left-color: var(--accent-2); }
+    .kpi-card.accent-orange { border-left-color: var(--accent-3); }
+    .kpi-card.accent-purple { border-left-color: var(--accent-4); }
+    .kpi-card.accent-red { border-left-color: var(--accent-5); }
+    .kpi-card.accent-cyan { border-left-color: var(--accent-6); }
+    .kpi-card.accent-pink { border-left-color: var(--accent-7); }
+    .kpi-card.accent-teal { border-left-color: var(--accent-10); }
+
+    .kpi-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+      margin: 0 0 8px 0;
+      font-weight: 500;
+    }
+
+    .kpi-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--text-color);
+      margin: 0;
+      line-height: 1.1;
+    }
+
+    .kpi-sub {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-color);
+      margin: 24px 0 12px 0;
+    }
+
+    .quality-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .quality-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 18px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .quality-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-color);
+      margin: 0 0 12px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .quality-total {
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-weight: 500;
+      background: var(--table-header-bg);
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    .quality-rows { display: flex; flex-direction: column; gap: 6px; }
+
+    .quality-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border-radius: 6px;
+      gap: 12px;
+    }
+
+    .quality-row-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-color);
+    }
+
+    .quality-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .quality-dot.valid { background: var(--accent-2); }
+    .quality-dot.invalid { background: var(--accent-5); }
+    .quality-dot.empty { background: var(--accent-3); }
+    .quality-dot.other { background: var(--accent-1); }
+
+    .quality-row-count {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-color);
+    }
+
+    .quality-row-pct {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-left: 6px;
+    }
+
+    .matrix-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 20px;
+      overflow-x: auto;
+    }
+
+    .matrix-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .matrix-card-header h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-color);
+      margin: 0;
+    }
+
+    .matrix-card-header p {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin: 2px 0 0 0;
+    }
+
+    .matrix-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 4px;
+      font-size: 13px;
+      min-width: 480px;
+    }
+
+    .matrix-table th, .matrix-table td {
+      padding: 10px 8px;
+      text-align: center;
+      border-radius: 6px;
+    }
+
+    .matrix-table th {
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+    }
+
+    .matrix-table th.row-header { text-align: left; padding-left: 14px; }
+
+    .matrix-table td.row-header {
+      font-weight: 600;
+      color: var(--text-color);
+      text-align: left;
+      padding-left: 14px;
+      background: var(--table-header-bg);
+    }
+
+    .matrix-table td.cell {
+      color: var(--text-color);
+      font-weight: 500;
+      background: var(--table-header-bg);
+    }
+
+    .matrix-table td.cell.zero {
+      color: var(--text-secondary);
+      opacity: 0.4;
+    }
+
+    .matrix-table tfoot td {
+      font-weight: 700;
+      background: transparent;
+      color: var(--text-color);
+      border-top: 1px solid var(--border-color);
+    }
+
+    .matrix-table tfoot td.label {
+      text-align: left;
+      padding-left: 14px;
+    }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .chart-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      min-height: 340px;
+    }
+
+    .chart-card.span-12 { grid-column: span 12; }
+    .chart-card.span-8 { grid-column: span 8; }
+    .chart-card.span-6 { grid-column: span 6; }
+    .chart-card.span-4 { grid-column: span 4; }
+    .chart-card.tall { min-height: 420px; }
+    .chart-card.xtall { min-height: 560px; }
+
+    @media (max-width: 1100px) {
+      .chart-card.span-8, .chart-card.span-6, .chart-card.span-4 {
+        grid-column: span 12;
+      }
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .chart-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-color);
+      margin: 0;
+    }
+
+    .chart-subtitle {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin: 2px 0 0 0;
+    }
+
+    .chart-canvas-wrap {
+      flex: 1;
+      position: relative;
+      min-height: 260px;
+    }
+
+    .scroll-chart {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 4px;
+    }
+
+    .scroll-chart::-webkit-scrollbar { width: 6px; }
+    .scroll-chart::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+
+    .canvas-sizer {
+      position: relative;
+      width: 100%;
+      min-height: 240px;
+    }
+
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 400px;
+      gap: 16px;
+      color: var(--text-secondary);
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border-color);
+      border-top-color: var(--primary-color);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty-state {
+      text-align: center;
+      color: var(--text-secondary);
+      padding: 40px 20px;
+      font-size: 14px;
+    }
+
+    .empty-state .diag {
+      display: block;
+      margin-top: 12px;
+      font-size: 11px;
+      opacity: 0.7;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: var(--table-header-bg);
+      padding: 8px 12px;
+      border-radius: 6px;
+      max-width: 720px;
+      margin-left: auto;
+      margin-right: auto;
+      word-break: break-all;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1 class="header-title">BCOMING Overview</h1>
+      <p class="header-subtitle">BCOMING data overview</p>
+    </div>
+    <div class="header-status">
+      <span class="status-dot"></span>
+      <span id="lastUpdate">Connecting to Grist...</span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="individuals">Individuals</button>
+    <button class="tab" data-tab="samples">Samples</button>
+    <button class="tab" data-tab="extraction">Extraction</button>
+    <button class="tab" data-tab="cdna">CDNA</button>
+    <button class="tab" data-tab="pcr">PCR</button>
+    <button class="tab" data-tab="sanger">SangerSequencing</button>
+  </div>
+
+  <div class="loading-state" id="globalLoading">
+    <div class="spinner"></div>
+    <div>Loading data...</div>
+  </div>
+
+  <div id="dashboardContent" style="display:none;">
+
+    <!-- INDIVIDUALS TAB -->
+    <div id="individualsTab" class="tab-content active">
+      <div class="subtabs" data-group="indv">
+        <div class="subtab-slider"></div>
+        <button class="subtab active" data-subtab="indvStats">Stats</button>
+        <button class="subtab" data-subtab="indvGraphs">Graphs</button>
+      </div>
+
+      <div id="indvStatsTab" class="subtab-content active">
+        <div class="kpi-grid" id="indvKpisTop"></div>
+
+        <div class="quality-grid">
+          <div class="quality-card">
+            <div class="quality-title">Individual Sex <span class="quality-total" id="indvSexTotal"></span></div>
+            <div class="quality-rows" id="indvSexQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">Ectoparasites <span class="quality-total" id="indvEctoTotal"></span></div>
+            <div class="quality-rows" id="indvEctoQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">Necropsy ID <span class="quality-total" id="indvNecroTotal"></span></div>
+            <div class="quality-rows" id="indvNecroQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">Coordinates <span class="quality-total" id="indvCoordTotal"></span></div>
+            <div class="quality-rows" id="indvCoordQuality"></div>
+          </div>
+        </div>
+
+        <div class="kpi-grid" id="indvKpisBottom"></div>
+
+        <div class="quality-grid">
+          <div class="quality-card">
+            <div class="quality-title">Animal Set <span class="quality-total" id="indvAnimalSetTotal"></span></div>
+            <div class="quality-rows" id="indvAnimalSetQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">Site <span class="quality-total" id="indvSiteTotal"></span></div>
+            <div class="quality-rows" id="indvSiteQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">Validation Status <span class="quality-total" id="indvValidTotal"></span></div>
+            <div class="quality-rows" id="indvValidQuality"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="indvGraphsTab" class="subtab-content">
+        <div class="chart-grid">
+          <div class="chart-card span-6 tall">
+            <div class="chart-header">
+              <div>
+                <h3 class="chart-title">Fieldsite Name</h3>
+                <p class="chart-subtitle">Individuals by fieldsite</p>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap"><canvas id="indvFieldsiteChart"></canvas></div>
+          </div>
+          <div class="chart-card span-6 tall">
+            <div class="chart-header">
+              <div>
+                <h3 class="chart-title">Trap Type</h3>
+                <p class="chart-subtitle">Capture method distribution</p>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap"><canvas id="indvTrapChart"></canvas></div>
+          </div>
+
+          <div class="chart-card span-12 tall">
+            <div class="chart-header">
+              <div>
+                <h3 class="chart-title">Transect</h3>
+                <p class="chart-subtitle">Individuals per transect</p>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap"><canvas id="indvTransectChart"></canvas></div>
+          </div>
+
+          <div class="chart-card span-6 xtall">
+            <div class="chart-header">
+              <div>
+                <h3 class="chart-title">Species</h3>
+                <p class="chart-subtitle">All field-identified species</p>
+              </div>
+            </div>
+            <div class="scroll-chart">
+              <div class="canvas-sizer" id="indvSpeciesSizer"><canvas id="indvSpeciesChart"></canvas></div>
+            </div>
+          </div>
+          <div class="chart-card span-6 xtall">
+            <div class="chart-header">
+              <div>
+                <h3 class="chart-title">Animal Set</h3>
+                <p class="chart-subtitle">All animal sets</p>
+              </div>
+            </div>
+            <div class="scroll-chart">
+              <div class="canvas-sizer" id="indvAnimalSetSizer"><canvas id="indvAnimalSetChart"></canvas></div>
+            </div>
+          </div>
+
+          <div class="chart-card span-4 tall">
+            <div class="chart-header">
+              <div>
+                <h3 class="chart-title">Sex Ratio</h3>
+                <p class="chart-subtitle">Male vs Female</p>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap"><canvas id="indvSexChart"></canvas></div>
+          </div>
+          <div class="chart-card span-4 tall">
+            <div class="chart-header">
+              <div>
+                <h3 class="chart-title">Ectoparasites</h3>
+                <p class="chart-subtitle">Presence distribution</p>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap"><canvas id="indvEctoChart"></canvas></div>
+          </div>
+          <div class="chart-card span-4 tall">
+            <div class="chart-header">
+              <div>
+                <h3 class="chart-title">Necropsy</h3>
+                <p class="chart-subtitle">Assigned vs Unassigned</p>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap"><canvas id="indvNecroChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SAMPLES TAB -->
+    <div id="samplesTab" class="tab-content">
+      <div class="subtabs" data-group="samples">
+        <div class="subtab-slider"></div>
+        <button class="subtab active" data-subtab="stats">Stats</button>
+        <button class="subtab" data-subtab="graphs">Graphs</button>
+      </div>
+
+      <div id="statsTab" class="subtab-content active">
+        <div class="kpi-grid" id="overviewKpisTop"></div>
+
+        <div class="matrix-card" id="matrixCard">
+          <div class="matrix-card-header">
+            <div>
+              <h3>Mission × Site</h3>
+              <p id="matrixSubtitle">Samples overview</p>
+            </div>
+            <div class="matrix-controls" id="matrixControls"></div>
+          </div>
+          <div id="matrixContent"></div>
+        </div>
+
+        <div class="kpi-grid" id="overviewKpisBottom"></div>
+
+        <div class="quality-grid">
+          <div class="quality-card">
+            <div class="quality-title">Box ID <span class="quality-total" id="boxIdTotal"></span></div>
+            <div class="quality-rows" id="boxIdQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">Individual Code <span class="quality-total" id="indvCodeTotal"></span></div>
+            <div class="quality-rows" id="indvCodeQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">Animal Set <span class="quality-total" id="animalSetTotal"></span></div>
+            <div class="quality-rows" id="animalSetQuality"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="graphsTab" class="subtab-content">
+        <div class="chart-grid">
+          <div class="chart-card span-6 tall">
+            <div class="chart-header">
+              <div>
+                <h3 class="chart-title">Sample Status</h3>
+                <p class="chart-subtitle">Finished vs Not Finished</p>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap"><canvas id="statusDonut"></canvas></div>
+          </div>
+          <div class="chart-card span-6 tall">
+            <div class="chart-header">
+              <div>
+                <h3 class="chart-title">Validity</h3>
+                <p class="chart-subtitle">Sample quality status</p>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap"><canvas id="validityDonut"></canvas></div>
+          </div>
+
+          <div class="chart-card span-8 tall">
+            <div class="chart-header">
+              <div>
+                <h3 class="chart-title">Projects &amp; Sites</h3>
+                <p class="chart-subtitle">Sample counts based upon Projects and Sites</p>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap"><canvas id="projectSiteChart"></canvas></div>
+          </div>
+          <div class="chart-card span-4 tall">
+            <div class="chart-header">
+              <div>
+                <h3 class="chart-title">Animal Set</h3>
+                <p class="chart-subtitle">All Animals</p>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap"><canvas id="animalSetChart"></canvas></div>
+          </div>
+
+          <div class="chart-card span-12 tall">
+            <div class="chart-header">
+              <div>
+                <h3 class="chart-title">Collection Timeline</h3>
+                <p class="chart-subtitle">Years (1900–2030) only</p>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap"><canvas id="yearChart"></canvas></div>
+          </div>
+
+          <div class="chart-card span-6 tall">
+            <div class="chart-header">
+              <div>
+                <h3 class="chart-title">Conservation Method</h3>
+                <p class="chart-subtitle">Preservation methods</p>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap"><canvas id="conservationChart"></canvas></div>
+          </div>
+          <div class="chart-card span-6 tall">
+            <div class="chart-header">
+              <div>
+                <h3 class="chart-title">Tube Formats</h3>
+                <p class="chart-subtitle">Container distribution</p>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap"><canvas id="tubeChart"></canvas></div>
+          </div>
+
+          <div class="chart-card span-6 tall">
+            <div class="chart-header">
+              <div>
+                <h3 class="chart-title">Box ID</h3>
+                <p class="chart-subtitle">Reference validity</p>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap"><canvas id="boxIdChart"></canvas></div>
+          </div>
+          <div class="chart-card span-6 tall">
+            <div class="chart-header">
+              <div>
+                <h3 class="chart-title">Individual Code</h3>
+                <p class="chart-subtitle">Reference validity</p>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap"><canvas id="indvCodeChart"></canvas></div>
+          </div>
+
+          <div class="chart-card span-6 xtall">
+            <div class="chart-header">
+              <div>
+                <h3 class="chart-title">Species</h3>
+                <p class="chart-subtitle">All field-identified species</p>
+              </div>
+            </div>
+            <div class="scroll-chart">
+              <div class="canvas-sizer" id="speciesSizer"><canvas id="speciesChart"></canvas></div>
+            </div>
+          </div>
+          <div class="chart-card span-6 xtall">
+            <div class="chart-header">
+              <div>
+                <h3 class="chart-title">Materials</h3>
+                <p class="chart-subtitle">All biological materials</p>
+              </div>
+            </div>
+            <div class="scroll-chart">
+              <div class="canvas-sizer" id="materialSizer"><canvas id="materialChart"></canvas></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXTRACTION TAB -->
+    <div id="extractionTab" class="tab-content">
+      <div class="subtabs" data-group="extr">
+        <div class="subtab-slider"></div>
+        <button class="subtab active" data-subtab="extrStats">Stats</button>
+        <button class="subtab" data-subtab="extrGraphs">Graphs</button>
+      </div>
+
+      <div id="extrStatsTab" class="subtab-content active">
+        <div class="kpi-grid" id="extrKpisTop"></div>
+
+        <div class="quality-grid">
+          <div class="quality-card">
+            <div class="quality-title">Material <span class="quality-total" id="extrMaterialTotal"></span></div>
+            <div class="quality-rows" id="extrMaterialQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">DNA Validity <span class="quality-total" id="extrDnaValidityTotal"></span></div>
+            <div class="quality-rows" id="extrDnaValidityQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">RNA Validity <span class="quality-total" id="extrRnaValidityTotal"></span></div>
+            <div class="quality-rows" id="extrRnaValidityQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">Animal Set <span class="quality-total" id="extrAnimalSetTotal"></span></div>
+            <div class="quality-rows" id="extrAnimalSetQuality"></div>
+          </div>
+        </div>
+
+        <div class="kpi-grid" id="extrKpisBottom"></div>
+
+        <div class="quality-grid">
+          <div class="quality-card">
+            <div class="quality-title">Extraction Method <span class="quality-total" id="extrExtractionMethodTotal"></span></div>
+            <div class="quality-rows" id="extrExtractionMethodQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">DNA Conc Method <span class="quality-total" id="extrDnaConcMethodTotal"></span></div>
+            <div class="quality-rows" id="extrDnaConcMethodQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">Person <span class="quality-total" id="extrPersonTotal"></span></div>
+            <div class="quality-rows" id="extrPersonQuality"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="extrGraphsTab" class="subtab-content">
+        <div class="chart-grid">
+          <div class="chart-card span-12 tall">
+            <div class="chart-header"><div><h3 class="chart-title">Extraction Timeline</h3><p class="chart-subtitle">By collection year</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="extrTimelineChart"></canvas></div>
+          </div>
+          <div class="chart-card span-6 tall">
+            <div class="chart-header"><div><h3 class="chart-title">Material</h3><p class="chart-subtitle">Top materials extracted</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="extrMaterialChart"></canvas></div>
+          </div>
+          <div class="chart-card span-6 tall">
+            <div class="chart-header"><div><h3 class="chart-title">Animal Set</h3><p class="chart-subtitle">Distribution</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="extrAnimalSetChart"></canvas></div>
+          </div>
+          <div class="chart-card span-6 tall">
+            <div class="chart-header"><div><h3 class="chart-title">DNA Validity</h3><p class="chart-subtitle">Quality status</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="extrDnaValidityChart"></canvas></div>
+          </div>
+          <div class="chart-card span-6 tall">
+            <div class="chart-header"><div><h3 class="chart-title">RNA Validity</h3><p class="chart-subtitle">Quality status</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="extrRnaValidityChart"></canvas></div>
+          </div>
+          <div class="chart-card span-12 tall">
+            <div class="chart-header"><div><h3 class="chart-title">Person / Extractor</h3><p class="chart-subtitle">Records per person</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="extrPersonChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CDNA TAB -->
+    <div id="cdnaTab" class="tab-content">
+      <div class="subtabs" data-group="cdna">
+        <div class="subtab-slider"></div>
+        <button class="subtab active" data-subtab="cdnaStats">Stats</button>
+        <button class="subtab" data-subtab="cdnaGraphs">Graphs</button>
+      </div>
+
+      <div id="cdnaStatsTab" class="subtab-content active">
+        <div class="kpi-grid" id="cdnaKpisTop"></div>
+
+        <div class="quality-grid">
+          <div class="quality-card">
+            <div class="quality-title">Animal Set <span class="quality-total" id="cdnaAnimalSetTotal"></span></div>
+            <div class="quality-rows" id="cdnaAnimalSetQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">Material <span class="quality-total" id="cdnaMaterialTotal"></span></div>
+            <div class="quality-rows" id="cdnaMaterialQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">Labeled <span class="quality-total" id="cdnaLabeledTotal"></span></div>
+            <div class="quality-rows" id="cdnaLabeledQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">CDNA Method <span class="quality-total" id="cdnaMethodTotal"></span></div>
+            <div class="quality-rows" id="cdnaMethodQuality"></div>
+          </div>
+        </div>
+
+        <div class="kpi-grid" id="cdnaKpisBottom"></div>
+
+        <div class="quality-grid">
+          <div class="quality-card">
+            <div class="quality-title">Person <span class="quality-total" id="cdnaPersonTotal"></span></div>
+            <div class="quality-rows" id="cdnaPersonQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">DNA Conc Method <span class="quality-total" id="cdnaDnaConcMethodTotal"></span></div>
+            <div class="quality-rows" id="cdnaDnaConcMethodQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">RNA Volume Used <span class="quality-total" id="cdnaRnaVolumeTotal"></span></div>
+            <div class="quality-rows" id="cdnaRnaVolumeQuality"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="cdnaGraphsTab" class="subtab-content">
+        <div class="chart-grid">
+          <div class="chart-card span-6 tall">
+            <div class="chart-header"><div><h3 class="chart-title">Labeled Status</h3><p class="chart-subtitle">Yes vs No</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="cdnaLabeledChart"></canvas></div>
+          </div>
+          <div class="chart-card span-6 tall">
+            <div class="chart-header"><div><h3 class="chart-title">Animal Set</h3><p class="chart-subtitle">cDNA per animal set</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="cdnaAnimalSetChart"></canvas></div>
+          </div>
+          <div class="chart-card span-6 tall">
+            <div class="chart-header"><div><h3 class="chart-title">Material</h3><p class="chart-subtitle">By source material</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="cdnaMaterialChart"></canvas></div>
+          </div>
+          <div class="chart-card span-6 tall">
+            <div class="chart-header"><div><h3 class="chart-title">Person</h3><p class="chart-subtitle">Records per person</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="cdnaPersonChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PCR TAB -->
+    <div id="pcrTab" class="tab-content">
+      <div class="subtabs" data-group="pcr">
+        <div class="subtab-slider"></div>
+        <button class="subtab active" data-subtab="pcrStats">Stats</button>
+        <button class="subtab" data-subtab="pcrGraphs">Graphs</button>
+      </div>
+
+      <div id="pcrStatsTab" class="subtab-content active">
+        <div class="kpi-grid" id="pcrKpisTop"></div>
+
+        <div class="quality-grid">
+          <div class="quality-card">
+            <div class="quality-title">Result <span class="quality-total" id="pcrResultTotal"></span></div>
+            <div class="quality-rows" id="pcrResultQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">Animal Set <span class="quality-total" id="pcrAnimalSetTotal"></span></div>
+            <div class="quality-rows" id="pcrAnimalSetQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">Species (field id) <span class="quality-total" id="pcrSpeciesTotal"></span></div>
+            <div class="quality-rows" id="pcrSpeciesQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">Material <span class="quality-total" id="pcrMaterialTotal"></span></div>
+            <div class="quality-rows" id="pcrMaterialQuality"></div>
+          </div>
+        </div>
+
+        <div class="kpi-grid" id="pcrKpisBottom"></div>
+
+        <div class="quality-grid">
+          <div class="quality-card">
+            <div class="quality-title">Protocol <span class="quality-total" id="pcrProtocolTotal"></span></div>
+            <div class="quality-rows" id="pcrProtocolQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">Template <span class="quality-total" id="pcrTemplateTotal"></span></div>
+            <div class="quality-rows" id="pcrTemplateQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">Person <span class="quality-total" id="pcrPersonTotal"></span></div>
+            <div class="quality-rows" id="pcrPersonQuality"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="pcrGraphsTab" class="subtab-content">
+        <div class="chart-grid">
+          <div class="chart-card span-6 tall">
+            <div class="chart-header"><div><h3 class="chart-title">Result Distribution</h3><p class="chart-subtitle">Positive / Negative / Unknown</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="pcrResultChart"></canvas></div>
+          </div>
+          <div class="chart-card span-6 tall">
+            <div class="chart-header"><div><h3 class="chart-title">Protocol</h3><p class="chart-subtitle">PCR protocols used</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="pcrProtocolChart"></canvas></div>
+          </div>
+          <div class="chart-card span-12 tall">
+            <div class="chart-header"><div><h3 class="chart-title">PCR Timeline</h3><p class="chart-subtitle">By year</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="pcrTimelineChart"></canvas></div>
+          </div>
+          <div class="chart-card span-6 tall">
+            <div class="chart-header"><div><h3 class="chart-title">Animal Set</h3><p class="chart-subtitle">By animal set</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="pcrAnimalSetChart"></canvas></div>
+          </div>
+          <div class="chart-card span-6 tall">
+            <div class="chart-header"><div><h3 class="chart-title">Template</h3><p class="chart-subtitle">DNA / cDNA / other</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="pcrTemplateChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SANGER SEQUENCING TAB -->
+    <div id="sangerTab" class="tab-content">
+      <div class="subtabs" data-group="sang">
+        <div class="subtab-slider"></div>
+        <button class="subtab active" data-subtab="sangStats">Stats</button>
+        <button class="subtab" data-subtab="sangGraphs">Graphs</button>
+      </div>
+
+      <div id="sangStatsTab" class="subtab-content active">
+        <div class="kpi-grid" id="sangKpisTop"></div>
+
+        <div class="quality-grid">
+          <div class="quality-card">
+            <div class="quality-title">Sequencing Type <span class="quality-total" id="sangSeqTypeTotal"></span></div>
+            <div class="quality-rows" id="sangSeqTypeQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">Read Direction <span class="quality-total" id="sangReadDirTotal"></span></div>
+            <div class="quality-rows" id="sangReadDirQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">Sanger Purpose <span class="quality-total" id="sangPurposeTotal"></span></div>
+            <div class="quality-rows" id="sangPurposeQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">Company <span class="quality-total" id="sangCompanyTotal"></span></div>
+            <div class="quality-rows" id="sangCompanyQuality"></div>
+          </div>
+        </div>
+
+        <div class="kpi-grid" id="sangKpisBottom"></div>
+
+        <div class="quality-grid">
+          <div class="quality-card">
+            <div class="quality-title">Target Gene <span class="quality-total" id="sangTargetGeneTotal"></span></div>
+            <div class="quality-rows" id="sangTargetGeneQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">Animal Set <span class="quality-total" id="sangAnimalSetTotal"></span></div>
+            <div class="quality-rows" id="sangAnimalSetQuality"></div>
+          </div>
+          <div class="quality-card">
+            <div class="quality-title">Analyst <span class="quality-total" id="sangAnalystTotal"></span></div>
+            <div class="quality-rows" id="sangAnalystQuality"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="sangGraphsTab" class="subtab-content">
+        <div class="chart-grid">
+          <div class="chart-card span-6 tall">
+            <div class="chart-header"><div><h3 class="chart-title">Target Gene</h3><p class="chart-subtitle">Sequences per gene</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="sangTargetGeneChart"></canvas></div>
+          </div>
+          <div class="chart-card span-6 tall">
+            <div class="chart-header"><div><h3 class="chart-title">Sequencing Company</h3><p class="chart-subtitle">By provider</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="sangCompanyChart"></canvas></div>
+          </div>
+          <div class="chart-card span-12 tall">
+            <div class="chart-header"><div><h3 class="chart-title">Sanger Timeline</h3><p class="chart-subtitle">By order year</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="sangTimelineChart"></canvas></div>
+          </div>
+          <div class="chart-card span-6 tall">
+            <div class="chart-header"><div><h3 class="chart-title">Sanger Purpose</h3><p class="chart-subtitle">Purpose distribution</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="sangPurposeChart"></canvas></div>
+          </div>
+          <div class="chart-card span-6 tall">
+            <div class="chart-header"><div><h3 class="chart-title">QC Score</h3><p class="chart-subtitle">Distribution</p></div></div>
+            <div class="chart-canvas-wrap"><canvas id="sangQcChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="dataModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" id="modalTitle">Data</h3>
+          <p class="modal-subtitle" id="modalSubtitle"></p>
+        </div>
+        <button class="modal-close" id="modalClose" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="modalTableWrap"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="galleryModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" id="galleryTitle">Photos</h3>
+          <p class="modal-subtitle" id="gallerySubtitle"></p>
+        </div>
+        <button class="modal-close" id="galleryClose" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="gallery-grid" id="galleryGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lightbox-overlay" id="lightboxOverlay">
+    <button class="lightbox-close" id="lightboxClose" aria-label="Close">&times;</button>
+    <img class="lightbox-image" id="lightboxImage" src="" alt="">
+    <div class="lightbox-caption" id="lightboxCaption"></div>
+  </div>
+
+  <script src="samples_dashboard.js"></script>
+</body>
+</html>
